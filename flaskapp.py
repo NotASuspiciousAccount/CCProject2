@@ -7,3 +7,7 @@ def hello_world():
 
 if __name__ == '__main__':
   app.run()
+
+@app.route('/countme/<input_str>')
+def count_me(input_str):
+    return input_str
