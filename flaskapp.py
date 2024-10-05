@@ -45,3 +45,8 @@ def execute_query(query, args=()):
     rows = cur.fetchall()
     cur.close()
     return rows
+
+@app.route("/viewdb")
+def viewdb():
+    rows = execute_query("""SELECT * FROM natlpark""")
+    return '<br>'.join(str(row) for row in rows)
