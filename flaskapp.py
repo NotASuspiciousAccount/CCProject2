@@ -1,9 +1,8 @@
-  GNU nano 7.2                                                                                                                      flaskapp.py                                                                                                                               from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for
 import sqlite3
 
-app = Flask(__name__)
-
 # SQLite setup
+# Use the path to the DB because it can't otherwise be found
 db_path = "/var/www/html/flaskapp/users.db"
 conn = sqlite3.connect(db_path)
 c = conn.cursor()
@@ -45,19 +44,25 @@ def profile(username):
 
 @app.route('/login', methods=['POST'])
 def login():
-    username = request.form['username']
-    password = request.form['password']
+    # If logging in, check username/password and accept valid combinations
+    if 'login' in request.form:
+        username = request.form['username']
+        password = request.form['password']
 
-    conn = sqlite3.connect(db_path)
-    c = conn.cursor()
-    c.execute("SELECT * FROM users WHERE username=? AND password=?", (username, password,))
-    user = c.fetchone()
-    conn.close()
+        conn = sqlite3.connect(db_path)
+        c = conn.cursor()
+        c.execute("SELECT * FROM users WHERE username=? AND password=?", (username, password,))
+        user = c.fetchone()
+        conn.close()
 
-    if user == None:
-        return redirect(url_for('login'))
+        if user == None:
+            return render_template('login.html')
 
-    return redirect(url_for('profile', username=username))
+        return redirect(url_for('profile', username=username))
+    # If not, redirect to register page
+    elif 'register' in request.form:
+        return render_template('register.html')
+
 
 if __name__ == '__main__':
     app.run(debug=True)
