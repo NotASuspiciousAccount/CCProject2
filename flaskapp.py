@@ -1,58 +1,63 @@
-from collections import Counter
-import csv
+  GNU nano 7.2                                                                                                                      flaskapp.py                                                                                                                               from flask import Flask, render_template, request, redirect, url_for
 import sqlite3
-
-from flask import Flask, request, g
-
-DATABASE = '/var/www/html/flaskapp/natlpark.db'
 
 app = Flask(__name__)
 
+# SQLite setup
+db_path = "/var/www/html/flaskapp/users.db"
+conn = sqlite3.connect(db_path)
+c = conn.cursor()
+c.execute('''CREATE TABLE IF NOT EXISTS users
+             (username TEXT, password TEXT, firstname TEXT, lastname TEXT, email TEXT)''')
+conn.commit()
+conn.close()
+
 @app.route('/')
-def hello_world():
-  return 'Hello from Flask!'
+def index():
+    return render_template('login.html')
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    username = request.form['username']
+    password = request.form['password']
+    firstname = request.form['firstname']
+    lastname = request.form['lastname']
+    email = request.form['email']
+
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    c.execute("INSERT INTO users (username, password, firstname, lastname, email) VALUES (?, ?, ?, ?, ?)",
+              (username, password, firstname, lastname, email))
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for('profile', username=username))
+
+@app.route('/profile/<username>')
+def profile(username):
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    c.execute("SELECT * FROM users WHERE username=?", (username,))
+    user = c.fetchone()
+    conn.close()
+
+    return render_template('profile.html', user=user)
+
+@app.route('/login', methods=['POST'])
+def login():
+    username = request.form['username']
+    password = request.form['password']
+
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    c.execute("SELECT * FROM users WHERE username=? AND password=?", (username, password,))
+    user = c.fetchone()
+    conn.close()
+
+    if user == None:
+        return redirect(url_for('login'))
+
+    return redirect(url_for('profile', username=username))
 
 if __name__ == '__main__':
-  app.run()
-
-@app.route('/countme/<input_str>')
-def count_me(input_str):
-    input_counter = Counter(input_str)
-    response = []
-    for letter, count in input_counter.most_common():
-        response.append('"{}": {}'.format(letter, count))
-    return '<br>'.join(response)
-
-app.config.from_object(__name__)
-
-def connect_to_database():
-    return sqlite3.connect(app.config['DATABASE'])
-
-def get_db():
-    db = getattr(g, 'db', None)
-    if db is None:
-        db = g.db = connect_to_database()
-    return db
-
-@app.teardown_appcontext
-def close_connection(exception):
-    db = getattr(g, 'db', None)
-    if db is not None:
-        db.close()
-
-def execute_query(query, args=()):
-    cur = get_db().execute(query, args)
-    rows = cur.fetchall()
-    cur.close()
-    return rows
-
-@app.route("/viewdb")
-def viewdb():
-    rows = execute_query("""SELECT * FROM natlpark""")
-    return '<br>'.join(str(row) for row in rows)
-
-@app.route("/state/<state>")
-def sortby(state):
-    rows = execute_query("""SELECT * FROM natlpark WHERE state = ?""",
-                         [state.title()])
-    return '<br>'.join(str(row) for row in rows)
+    app.run(debug=True)
